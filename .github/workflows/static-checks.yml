@@ -1,0 +1,23 @@
+name: static-checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  repository-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required files
+        run: |
+          test -f README.md
+          test -f LICENSE
+          test -f SECURITY.md
+          test -f sql/00_install.sql
+          test -f sql/01_uninstall.sql
+      - name: Check SQL whitespace and placeholders
+        run: |
+          ! grep -RIn $'\t' --include='*.sql' .
+          ! grep -RInE '[[:blank:]]+$' --include='*.sql' .
+          ! grep -RInE 'TODO|TBD|CHANGEME|example\.com' --include='*.sql' .
