@@ -144,6 +144,15 @@ jobs:
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 07_diagnostic_contract_tests.sql
 
+      - name: Run shared engine contract tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 08_shared_engine_contract_tests.sql
+
       - name: Uninstall and reinstall
         shell: bash
         env:
@@ -167,3 +176,6 @@ jobs:
           docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 07_diagnostic_contract_tests.sql
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 08_shared_engine_contract_tests.sql
