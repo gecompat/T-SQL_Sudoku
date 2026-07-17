@@ -7,6 +7,7 @@ WHERE [TechniqueName] IN
     'Hidden Pair',
     'Hidden Triple',
     'Hidden Quad',
+    'XY-Wing',
     'XYZ-Wing',
     'ALS-XZ'
 );
