@@ -2,47 +2,77 @@
 
 ## Purpose
 
-Candidate-only eliminations do not change the 81-character board string. Automated tests therefore need a stable diagnostic surface that exposes the first applied deduction without relying on message text or internal temporary tables.
+Candidate-only eliminations do not change the 81-character board string. Automated tests therefore use `dbo.USP_SudokuDiagnoseFirstDeduction` to expose the first deterministic explicit deduction without relying on message text or internal temporary tables.
 
-## Proposed output
+## Inputs
 
-A future diagnostic entry point should return exactly one row for the first applied logical action:
+```sql
+DECLARE @CandidateState dbo.SudokuCandidateState;
+
+EXEC dbo.USP_SudokuDiagnoseFirstDeduction
+    @Puzzle = @Puzzle,
+    @CandidateState = @CandidateState,
+    @UseCandidateState = 0,
+    @Help = 0;
+```
+
+`@UseCandidateState = 0` derives candidates from `@Puzzle`.
+
+`@UseCandidateState = 1` requires exactly 81 rows in `@CandidateState`, with one candidate mask from 1 through 511 for each position. This mode exists for deterministic unit tests of candidate patterns.
+
+## Result set
+
+The procedure returns zero or more target rows belonging to one first logical action. A set action returns one row. An elimination action may return multiple target rows when one pattern removes candidates from several cells.
 
 | Column | Type | Meaning |
 |---|---|---|
-| `TechniqueName` | `varchar(64)` | Direct method or generalized proof stage |
+| `SequenceNo` | `int` | Deterministic target-row order |
+| `TechniqueName` | `varchar(64)` | Directly detected method |
 | `ActionType` | `varchar(16)` | `Set` or `Eliminate` |
-| `Position` | `tinyint` | Target position from 1 through 81 |
-| `Digit` | `tinyint` | Assigned or removed digit |
+| `Pos` | `tinyint` | Target position from 1 through 81 |
+| `Digit` | `tinyint` | Assigned digit for a set action |
 | `OldCandidateMask` | `smallint` | Candidate mask before the action |
 | `NewCandidateMask` | `smallint` | Candidate mask after the action |
-| `RemovedMask` | `smallint` | Aggregate removed candidates |
-| `EvidenceType` | `varchar(32)` | Cell, house, fish, chain, ALS, or premise proof |
-| `Evidence` | `nvarchar(2000)` | Deterministic structured description |
-| `BoardBefore` | `char(81)` | Board before the action |
-| `BoardAfter` | `char(81)` | Board after the action |
+| `RemovedMask` | `smallint` | Candidates removed from this target |
+| `Evidence` | `nvarchar(2000)` | Stable English explanation |
+
+## Implemented diagnostic order
+
+1. Naked Single
+2. Hidden Single
+3. Pointing
+4. Claiming
+5. Naked Pair
+6. Naked Triple
+7. Naked Quad
+8. X-Wing
+9. Swordfish
+10. Jellyfish
+
+The first applicable technique wins. All target rows for that first action are returned in position order.
 
 ## Required semantics
 
-- One call analyzes one board state and returns at most one action.
-- The same board and parameters must return the same action.
-- A `Set` action must change exactly one board position.
-- An `Eliminate` action must change at least one candidate mask and must not change the board string.
-- `RemovedMask` must equal `OldCandidateMask & ~NewCandidateMask` for a single target.
-- Evidence must use stable position numbers and English technique names.
-- No diagnostic call may persist puzzle data.
+- The same state and parameters must return the same action.
+- A `Set` action returns exactly one target row.
+- An `Eliminate` action returns at least one target row.
+- `RemovedMask` equals `OldCandidateMask & ~NewCandidateMask`.
+- All names and evidence are English.
+- No diagnostic call persists puzzle or candidate data.
+- Invalid puzzle input raises error `50500`.
+- Invalid candidate-state input raises error `50501`.
 
-## Test use
+## Test coverage
 
-Once implemented, each explicit elimination technique must have:
+`tests/06_diagnostic_elimination_tests.sql` contains prepared positive and negative candidate-state tests for:
 
-1. a positive case that returns the expected technique and target;
-2. a boundary case that returns the same valid deduction under minimal premises;
-3. a negative case that returns no deduction for an almost-matching pattern;
-4. a regression case for every corrected defect.
+- Pointing;
+- Claiming;
+- Naked Pair;
+- X-Wing.
 
-## Implementation options
+`tests/07_diagnostic_contract_tests.sql` validates the type, procedure, parameter order, errors, and Help behavior.
 
-Preferred: factor first-step detection into a shared internal procedure used by both `dbo.USP_SudokuSolve` and a public diagnostic wrapper.
+## Remaining architectural work
 
-Avoid duplicating technique SQL in a test-only procedure, because duplicated detection logic can pass tests while the production solver remains incorrect.
+The diagnostic procedure currently mirrors the explicit deduction order used by the solver. The preferred final architecture is a shared internal first-deduction engine called by both `dbo.USP_SudokuSolve` and `dbo.USP_SudokuDiagnoseFirstDeduction`. Until that refactoring is complete, tests must compare diagnostic behavior with solver solution-path behavior on a live SQL Server instance.
