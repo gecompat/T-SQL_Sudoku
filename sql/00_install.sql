@@ -6,6 +6,7 @@
 :r $(RootPath)/install/10_USP_SudokuValidate.sql
 :r $(RootPath)/install/20_USP_SudokuSolve.sql
 :r $(RootPath)/install/25_USP_SudokuDiagnoseFirstDeduction.sql
+:r $(RootPath)/install/25a_canonicalize_diagnostic_header.sql
 :r $(RootPath)/install/26_shared_deduction_engine.sql
 :r $(RootPath)/install/27_diagnostic_definition_hardening.sql
 :r $(RootPath)/install/28_shared_state_reset_hardening.sql
