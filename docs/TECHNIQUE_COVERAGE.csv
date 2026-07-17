@@ -1,15 +1,15 @@
 Technique,Family,ImplementationMode,DirectPatternDetection,GeneralizedProofCoverage,ProducesNamedExplanation,HasPositiveTest,HasNegativeTest,DefaultEnabled,PrimarySource
 Naked Single,Singles,Explicit,Yes,Yes,Yes,Yes,No,Yes,Sudopedia
 Hidden Single,Singles,Explicit,Yes,Yes,Yes,Yes,No,Yes,Sudopedia
-Pointing,Locked Candidates,Explicit,Yes,Yes,Yes,No,No,Yes,Sudopedia
-Claiming,Locked Candidates,Explicit,Yes,Yes,Yes,No,No,Yes,Sudopedia
-Naked Pair,Subsets,Explicit,Yes,Yes,Yes,No,No,Yes,Sudopedia
+Pointing,Locked Candidates,Explicit,Yes,Yes,Yes,Yes,Yes,Yes,Sudopedia
+Claiming,Locked Candidates,Explicit,Yes,Yes,Yes,Yes,Yes,Yes,Sudopedia
+Naked Pair,Subsets,Explicit,Yes,Yes,Yes,Yes,Yes,Yes,Sudopedia
 Hidden Pair,Subsets,Generalized,No,Yes,No,No,No,Yes,Sudopedia
 Naked Triple,Subsets,Explicit,Yes,Yes,Yes,No,No,Yes,Sudopedia
 Hidden Triple,Subsets,Generalized,No,Yes,No,No,No,Yes,Sudopedia
 Naked Quad,Subsets,Explicit,Yes,Yes,Yes,No,No,Yes,Sudopedia
 Hidden Quad,Subsets,Generalized,No,Yes,No,No,No,Yes,Sudopedia
-X-Wing,Fish,Explicit,Yes,Yes,Yes,No,No,Yes,HoDoKu
+X-Wing,Fish,Explicit,Yes,Yes,Yes,Yes,Yes,Yes,HoDoKu
 Swordfish,Fish,Explicit,Yes,Yes,Yes,No,No,Yes,HoDoKu
 Jellyfish,Fish,Explicit,Yes,Yes,Yes,No,No,Yes,HoDoKu
 Finned X-Wing,Fish,Generalized,No,Yes,No,No,No,Yes,HoDoKu
