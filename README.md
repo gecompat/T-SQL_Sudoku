@@ -72,12 +72,16 @@ The exact implementation mode of every method is available in [Technique coverag
 
 Run `sql/00_install.sql` in SQLCMD mode.
 
+The final installation step normalizes local temporary-table constraints so the installed procedure definitions do not contain globally named tempdb constraints.
+
 Optional examples and tests:
 
 ```text
 sql/02_examples.sql
 tests/00_smoke_tests.sql
 tests/01_validator_tests.sql
+tests/02_contract_tests.sql
+tests/03_api_behavior_tests.sql
 ```
 
 Uninstall with `sql/01_uninstall.sql`.
@@ -90,6 +94,7 @@ Uninstall with `sql/01_uninstall.sql`.
 - restart after every successful technique
 - bounded expensive checks
 - precomputed peer relationships in `dbo.SudokuPeer`
+- anonymous local temporary-table constraints in installed procedures
 - no permissions granted by installation
 - no dependency on CLR or external code
 - optional diagnostic result sets
@@ -109,6 +114,7 @@ The repository includes static guards, deterministic test scripts, an independen
 - [Testing](docs/TESTING.md)
 - [Continuous integration](docs/CI.md)
 - [Release checklist](docs/RELEASE_CHECKLIST.md)
+- [Open work](docs/OPEN_WORK.md)
 - [Security and repository data policy](SECURITY.md)
 
 ## License
