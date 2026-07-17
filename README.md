@@ -88,4 +88,4 @@ The repository includes static guards, deterministic test scripts, and an indepe
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
