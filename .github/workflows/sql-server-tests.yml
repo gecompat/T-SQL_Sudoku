@@ -67,9 +67,9 @@ jobs:
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
         run: |
           for pass in 1 2; do
-            docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            docker exec -w /workspace/sql "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
               -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
-              -i /workspace/sql/00_install.sql
+              -i 00_install.sql
           done
 
       - name: Run smoke tests
@@ -77,27 +77,27 @@ jobs:
         env:
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
         run: |
-          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
-            -i /workspace/tests/00_smoke_tests.sql
+            -i 00_smoke_tests.sql
 
       - name: Run validator tests
         shell: bash
         env:
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
         run: |
-          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
-            -i /workspace/tests/01_validator_tests.sql
+            -i 01_validator_tests.sql
 
       - name: Uninstall and reinstall
         shell: bash
         env:
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
         run: |
-          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+          docker exec -w /workspace/sql "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
-            -i /workspace/sql/01_uninstall.sql
-          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -i 01_uninstall.sql
+          docker exec -w /workspace/sql "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
-            -i /workspace/sql/00_install.sql
+            -i 00_install.sql
