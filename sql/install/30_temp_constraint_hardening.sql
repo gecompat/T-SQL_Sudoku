@@ -50,6 +50,7 @@ BEGIN
     SET @OriginalDefinition = @Definition;
 
     SET @Definition = REPLACE(@Definition, N'CONSTRAINT [PK_Stack] ', N'');
+    SET @Definition = REPLACE(@Definition, N'CONSTRAINT [PK_SearchStack] ', N'');
     SET @Definition = REPLACE(@Definition, N'CONSTRAINT [PK_BoardCells] ', N'');
     SET @Definition = REPLACE(@Definition, N'CONSTRAINT [PK_TechniqueLog] ', N'');
     SET @Definition = REPLACE(@Definition, N'CONSTRAINT [PK_Removal] ', N'');
@@ -79,6 +80,7 @@ IF EXISTS
       AND
       (
           ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_Stack]%'
+          OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_SearchStack]%'
           OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_BoardCells]%'
           OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_TechniqueLog]%'
           OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_Removal]%'
