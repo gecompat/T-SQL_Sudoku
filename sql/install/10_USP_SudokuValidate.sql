@@ -4,14 +4,14 @@ CREATE OR ALTER PROCEDURE dbo.USP_SudokuValidate
     @MaxSolutions  tinyint = 2,
     @SolutionCount int OUTPUT,
     @FirstSolution char(81) OUTPUT,
-    @Hilfe         bit = 0
+    @Help          bit = 0
 )
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    IF @Hilfe = 1
+    IF @Help = 1
     BEGIN
         PRINT 'dbo.USP_SudokuValidate';
         PRINT 'Counts solutions using independent backtracking.';
@@ -35,107 +35,107 @@ BEGIN
     SET @SolutionCount = 0;
     SET @FirstSolution = NULL;
 
-    CREATE TABLE #Stack
+    CREATE TABLE #SearchStack
     (
         [StackID] bigint IDENTITY(1,1) NOT NULL,
         [Board] char(81) NOT NULL,
-        CONSTRAINT [PK_Stack] PRIMARY KEY CLUSTERED ([StackID])
+        CONSTRAINT [PK_SearchStack] PRIMARY KEY CLUSTERED ([StackID])
     );
 
-    INSERT INTO #Stack ([Board])
+    INSERT INTO #SearchStack ([Board])
     VALUES (@Puzzle);
 
     DECLARE
         @StackID bigint,
-        @Board char(81),
-        @BranchPos tinyint,
+        @CurrentBoard char(81),
+        @BranchPosition tinyint,
         @BranchMask smallint,
         @Digit tinyint,
-        @BitMask smallint,
-        @Invalid bit;
+        @DigitMask smallint,
+        @IsInvalid bit;
 
-    WHILE EXISTS (SELECT 1 FROM #Stack)
+    WHILE EXISTS (SELECT 1 FROM #SearchStack)
       AND @SolutionCount < @MaxSolutions
     BEGIN
         SELECT TOP (1)
-            @StackID = s.[StackID],
-            @Board = s.[Board]
-        FROM #Stack AS s
-        ORDER BY s.[StackID] DESC;
+            @StackID = stackItem.[StackID],
+            @CurrentBoard = stackItem.[Board]
+        FROM #SearchStack AS stackItem
+        ORDER BY stackItem.[StackID] DESC;
 
-        DELETE FROM #Stack
+        DELETE FROM #SearchStack
         WHERE [StackID] = @StackID;
 
-        SET @Invalid = 0;
+        SET @IsInvalid = 0;
 
         IF EXISTS
         (
             SELECT 1
-            FROM dbo.SudokuPos AS p
+            FROM dbo.SudokuPos AS position
             CROSS APPLY
             (
                 VALUES
-                    (CONVERT(tinyint, SUBSTRING(@Board, p.[Pos], 1)))
+                    (CONVERT(tinyint, SUBSTRING(@CurrentBoard, position.[Pos], 1)))
             ) AS value([Digit])
             WHERE value.[Digit] <> 0
-            GROUP BY p.[Row], value.[Digit]
+            GROUP BY position.[Row], value.[Digit]
             HAVING COUNT_BIG(*) > 1
         )
         OR EXISTS
         (
             SELECT 1
-            FROM dbo.SudokuPos AS p
+            FROM dbo.SudokuPos AS position
             CROSS APPLY
             (
                 VALUES
-                    (CONVERT(tinyint, SUBSTRING(@Board, p.[Pos], 1)))
+                    (CONVERT(tinyint, SUBSTRING(@CurrentBoard, position.[Pos], 1)))
             ) AS value([Digit])
             WHERE value.[Digit] <> 0
-            GROUP BY p.[Col], value.[Digit]
+            GROUP BY position.[Col], value.[Digit]
             HAVING COUNT_BIG(*) > 1
         )
         OR EXISTS
         (
             SELECT 1
-            FROM dbo.SudokuPos AS p
+            FROM dbo.SudokuPos AS position
             CROSS APPLY
             (
                 VALUES
-                    (CONVERT(tinyint, SUBSTRING(@Board, p.[Pos], 1)))
+                    (CONVERT(tinyint, SUBSTRING(@CurrentBoard, position.[Pos], 1)))
             ) AS value([Digit])
             WHERE value.[Digit] <> 0
-            GROUP BY p.[Box], value.[Digit]
+            GROUP BY position.[Box], value.[Digit]
             HAVING COUNT_BIG(*) > 1
         )
         BEGIN
-            SET @Invalid = 1;
+            SET @IsInvalid = 1;
         END;
 
-        IF @Invalid = 1
+        IF @IsInvalid = 1
             CONTINUE;
 
-        IF @Board NOT LIKE '%0%'
+        IF @CurrentBoard NOT LIKE '%0%'
         BEGIN
             SET @SolutionCount += 1;
 
             IF @FirstSolution IS NULL
-                SET @FirstSolution = @Board;
+                SET @FirstSolution = @CurrentBoard;
 
             CONTINUE;
         END;
 
-        SET @BranchPos = NULL;
+        SET @BranchPosition = NULL;
         SET @BranchMask = NULL;
 
         ;WITH EmptyCells AS
         (
             SELECT
-                p.[Pos],
-                p.[Row],
-                p.[Col],
-                p.[Box]
-            FROM dbo.SudokuPos AS p
-            WHERE SUBSTRING(@Board, p.[Pos], 1) = '0'
+                position.[Pos],
+                position.[Row],
+                position.[Col],
+                position.[Box]
+            FROM dbo.SudokuPos AS position
+            WHERE SUBSTRING(@CurrentBoard, position.[Pos], 1) = '0'
         ),
         CandidateMasks AS
         (
@@ -147,40 +147,40 @@ BEGIN
                         smallint,
                         511
                         & ~ISNULL(rowMask.[UsedMask], 0)
-                        & ~ISNULL(colMask.[UsedMask], 0)
+                        & ~ISNULL(columnMask.[UsedMask], 0)
                         & ~ISNULL(boxMask.[UsedMask], 0)
                     )
             FROM EmptyCells AS emptyCell
             OUTER APPLY
             (
-                SELECT [UsedMask] = SUM(dm.[BitMask])
-                FROM dbo.SudokuPos AS p2
-                INNER JOIN dbo.SudokuDigitMask AS dm
-                    ON dm.[Digit] =
-                       CONVERT(tinyint, SUBSTRING(@Board, p2.[Pos], 1))
-                WHERE p2.[Row] = emptyCell.[Row]
+                SELECT [UsedMask] = SUM(digitMask.[BitMask])
+                FROM dbo.SudokuPos AS peer
+                INNER JOIN dbo.SudokuDigitMask AS digitMask
+                    ON digitMask.[Digit] =
+                       CONVERT(tinyint, SUBSTRING(@CurrentBoard, peer.[Pos], 1))
+                WHERE peer.[Row] = emptyCell.[Row]
             ) AS rowMask
             OUTER APPLY
             (
-                SELECT [UsedMask] = SUM(dm.[BitMask])
-                FROM dbo.SudokuPos AS p2
-                INNER JOIN dbo.SudokuDigitMask AS dm
-                    ON dm.[Digit] =
-                       CONVERT(tinyint, SUBSTRING(@Board, p2.[Pos], 1))
-                WHERE p2.[Col] = emptyCell.[Col]
-            ) AS colMask
+                SELECT [UsedMask] = SUM(digitMask.[BitMask])
+                FROM dbo.SudokuPos AS peer
+                INNER JOIN dbo.SudokuDigitMask AS digitMask
+                    ON digitMask.[Digit] =
+                       CONVERT(tinyint, SUBSTRING(@CurrentBoard, peer.[Pos], 1))
+                WHERE peer.[Col] = emptyCell.[Col]
+            ) AS columnMask
             OUTER APPLY
             (
-                SELECT [UsedMask] = SUM(dm.[BitMask])
-                FROM dbo.SudokuPos AS p2
-                INNER JOIN dbo.SudokuDigitMask AS dm
-                    ON dm.[Digit] =
-                       CONVERT(tinyint, SUBSTRING(@Board, p2.[Pos], 1))
-                WHERE p2.[Box] = emptyCell.[Box]
+                SELECT [UsedMask] = SUM(digitMask.[BitMask])
+                FROM dbo.SudokuPos AS peer
+                INNER JOIN dbo.SudokuDigitMask AS digitMask
+                    ON digitMask.[Digit] =
+                       CONVERT(tinyint, SUBSTRING(@CurrentBoard, peer.[Pos], 1))
+                WHERE peer.[Box] = emptyCell.[Box]
             ) AS boxMask
         )
         SELECT TOP (1)
-            @BranchPos = candidate.[Pos],
+            @BranchPosition = candidate.[Pos],
             @BranchMask = candidate.[CandidateMask]
         FROM CandidateMasks AS candidate
         INNER JOIN dbo.BitCount511 AS bitCount
@@ -196,19 +196,19 @@ BEGIN
 
         WHILE @Digit <= 9
         BEGIN
-            SELECT @BitMask = dm.[BitMask]
-            FROM dbo.SudokuDigitMask AS dm
-            WHERE dm.[Digit] = @Digit;
+            SELECT @DigitMask = mask.[BitMask]
+            FROM dbo.SudokuDigitMask AS mask
+            WHERE mask.[Digit] = @Digit;
 
-            IF (@BranchMask & @BitMask) <> 0
+            IF (@BranchMask & @DigitMask) <> 0
             BEGIN
-                INSERT INTO #Stack ([Board])
+                INSERT INTO #SearchStack ([Board])
                 VALUES
                 (
                     STUFF
                     (
-                        @Board,
-                        @BranchPos,
+                        @CurrentBoard,
+                        @BranchPosition,
                         1,
                         CONVERT(char(1), @Digit)
                     )
