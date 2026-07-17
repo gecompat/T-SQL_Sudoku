@@ -50,7 +50,9 @@ The exact statuses and result-set contracts are documented in [Public API contra
 
 The procedure executes inexpensive techniques first and restarts after every successful action.
 
-Direct source blocks currently exist for:
+One shared internal procedure, `dbo.USP_SudokuFindFirstDeduction`, now contains the explicit first-deduction logic used by both the production solver and the public diagnostic wrapper. This prevents the solver and diagnostic API from drifting apart.
+
+The shared explicit engine currently covers:
 
 - Naked Single and Hidden Single
 - Pointing and Claiming
@@ -75,22 +77,34 @@ The exact implementation mode of every method is available in [Technique coverag
 
 ## Diagnostic deduction API
 
-`dbo.USP_SudokuDiagnoseFirstDeduction` returns the first deterministic explicit deduction with candidate masks before and after the action. It accepts either a normal puzzle or a complete 81-row `dbo.SudokuCandidateState` table value for controlled unit tests.
+`dbo.USP_SudokuDiagnoseFirstDeduction` is a thin public wrapper around `dbo.USP_SudokuFindFirstDeduction`. It returns the first deterministic explicit deduction with candidate masks before and after the action.
 
-The diagnostic order currently covers:
+A complete board-state candidate table uses these rules:
 
-- Naked Single and Hidden Single
-- Pointing and Claiming
-- Naked Pair, Naked Triple, and Naked Quad
-- X-Wing, Swordfish, and Jellyfish
+- solved position: puzzle contains digit `1` through `9`, candidate mask is `0`;
+- unsolved position: puzzle contains `0`, candidate mask is from `1` through `511`.
+
+For backward-compatible all-unsolved tests, a NULL puzzle passed with `@UseCandidateState = 1` is treated as 81 zeroes.
 
 See [Deduction diagnostic contract](docs/DIAGNOSTIC_CONTRACT.md).
+
+## Candidate-state preservation
+
+Candidate refresh now intersects the legal Sudoku mask with the current candidate mask instead of replacing it. Logical eliminations from Pointing, subsets, fish, and future methods therefore survive subsequent iterations.
 
 ## Installation
 
 Run `sql/00_install.sql` in SQLCMD mode.
 
-The final installation steps normalize local temporary-table constraints, harden the diagnostic definition, and align terminal statuses with the documented API contract.
+The installation:
+
+- creates helper data and public procedures;
+- creates the shared deduction engine;
+- rewrites the solver to call that engine;
+- verifies that the explicit source block was replaced uniquely;
+- preserves previous candidate eliminations during refresh;
+- normalizes local temporary-table constraints;
+- aligns terminal statuses with the documented API contract.
 
 Optional examples and tests:
 
@@ -104,6 +118,7 @@ tests/04_status_boundary_tests.sql
 tests/05_direct_set_technique_tests.sql
 tests/06_diagnostic_elimination_tests.sql
 tests/07_diagnostic_contract_tests.sql
+tests/08_shared_engine_contract_tests.sql
 ```
 
 Uninstall with `sql/01_uninstall.sql`.
@@ -114,6 +129,8 @@ Uninstall with `sql/01_uninstall.sql`.
 - candidate masks from `1` through `256`
 - one update per target cell and technique
 - restart after every successful technique
+- preservation of prior candidate eliminations
+- one shared explicit-deduction implementation
 - bounded expensive checks
 - precomputed peer relationships in `dbo.SudokuPeer`
 - anonymous local temporary-table constraints in installed procedures
@@ -123,7 +140,7 @@ Uninstall with `sql/01_uninstall.sql`.
 
 ## Validation status
 
-The repository includes static guards, deterministic test scripts, an independent validator, a diagnostic candidate-state API, and a manually triggered SQL Server container workflow. The SQL and prepared tests must still be compiled and executed successfully before production use. See [Continuous integration](docs/CI.md) and [Release checklist](docs/RELEASE_CHECKLIST.md).
+The repository includes static guards, deterministic test scripts, an independent validator, a shared diagnostic engine, and a manually triggered SQL Server container workflow. The SQL and prepared tests must still be compiled and executed successfully before production use. See [Continuous integration](docs/CI.md) and [Release checklist](docs/RELEASE_CHECKLIST.md).
 
 ## Documentation
 
