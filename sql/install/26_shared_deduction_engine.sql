@@ -36,17 +36,44 @@ BEGIN
           1;
 END;
 
+/*
+    SQL Server can normalize CREATE OR ALTER to CREATE in sys.sql_modules and
+    can preserve or add delimited identifiers. Support every expected header
+    form, while still requiring exactly one successful procedure rename.
+*/
+SET @EngineDefinition = @DiagnosticDefinition;
 SET @EngineDefinition = REPLACE
 (
-    @DiagnosticDefinition,
+    @EngineDefinition,
     N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuDiagnoseFirstDeduction',
+    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
+);
+SET @EngineDefinition = REPLACE
+(
+    @EngineDefinition,
+    N'CREATE PROCEDURE dbo.USP_SudokuDiagnoseFirstDeduction',
+    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
+);
+SET @EngineDefinition = REPLACE
+(
+    @EngineDefinition,
+    N'CREATE OR ALTER PROCEDURE [dbo].[USP_SudokuDiagnoseFirstDeduction]',
+    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
+);
+SET @EngineDefinition = REPLACE
+(
+    @EngineDefinition,
+    N'CREATE PROCEDURE [dbo].[USP_SudokuDiagnoseFirstDeduction]',
     N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
 );
 
 IF @EngineDefinition = @DiagnosticDefinition
+   OR @EngineDefinition NOT LIKE N'%PROCEDURE dbo.USP_SudokuFindFirstDeduction%'
+   OR @EngineDefinition LIKE N'%PROCEDURE dbo.USP_SudokuDiagnoseFirstDeduction%'
+   OR @EngineDefinition LIKE N'%PROCEDURE [dbo].[USP_SudokuDiagnoseFirstDeduction]%'
 BEGIN
     THROW 50521,
-          'The shared deduction engine procedure-name marker was not found.',
+          'The shared deduction engine procedure-name marker was not found or was ambiguous.',
           1;
 END;
 
