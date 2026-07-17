@@ -1,0 +1,103 @@
+name: SQL Server validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run static checks
+        shell: pwsh
+        run: ./tools/static_checks.ps1
+
+  sql-server-tests:
+    runs-on: ubuntu-latest
+    needs: static-checks
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P '${{ secrets.MSSQL_SA_PASSWORD }}' -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify required secret
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          if [ -z "$MSSQL_SA_PASSWORD" ]; then
+            echo "Repository secret MSSQL_SA_PASSWORD is required."
+            exit 1
+          fi
+
+      - name: Create test database
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" \
+            -Q "CREATE DATABASE SudokuTest;"
+
+      - name: Copy repository into SQL Server container
+        shell: bash
+        run: docker cp . "${{ job.services.sqlserver.id }}:/workspace"
+
+      - name: Install twice
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          for pass in 1 2; do
+            docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+              -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+              -i /workspace/sql/00_install.sql
+          done
+
+      - name: Run smoke tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i /workspace/tests/00_smoke_tests.sql
+
+      - name: Run validator tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i /workspace/tests/01_validator_tests.sql
+
+      - name: Uninstall and reinstall
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i /workspace/sql/01_uninstall.sql
+          docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i /workspace/sql/00_install.sql
