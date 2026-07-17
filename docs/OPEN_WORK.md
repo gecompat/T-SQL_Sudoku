@@ -12,17 +12,22 @@ The repository is a testable release candidate, not a validated production relea
 - `tests/03_api_behavior_tests.sql` verifies documented input errors, invalid-board status, and Help behavior;
 - `tests/04_status_boundary_tests.sql` prepares assertions for single-step, iteration limit, natural stall, multiple solutions, and disabled backtracking;
 - `tests/05_direct_set_technique_tests.sql` prepares direct Naked Single and Hidden Single tests;
+- `dbo.SudokuCandidateState` and `dbo.USP_SudokuDiagnoseFirstDeduction` provide a deterministic candidate-state diagnostic surface;
+- `tests/06_diagnostic_elimination_tests.sql` prepares positive and negative tests for Pointing, Claiming, Naked Pair, and X-Wing;
+- `tests/07_diagnostic_contract_tests.sql` validates the diagnostic type, procedure, parameters, errors, and Help behavior;
 - the validator test suite includes unique, invalid, and multiple-solution puzzles;
 - `tools/static_checks.ps1` verifies that every known source constraint is covered by the mandatory hardening step;
-- technique coverage was reconciled with the actual solver source: XY-Wing, XYZ-Wing, hidden subsets, and ALS-XZ remain generalized rather than direct implementations;
-- `docs/DIAGNOSTIC_CONTRACT.md` defines the required surface for automated elimination-technique tests.
+- technique coverage was reconciled with the actual solver source: XY-Wing, XYZ-Wing, hidden subsets, and ALS-XZ remain generalized rather than direct implementations.
 
 ## Static and contract work still open
 
 - run `tools/static_checks.ps1` in a checked-out repository and resolve any environmental findings;
-- execute the prepared status and technique tests on SQL Server;
+- compile the new diagnostic type and procedure on SQL Server;
+- execute all prepared status, contract, and technique tests;
+- compare diagnostic first-deduction rows with solver solution-path rows on the same states;
+- refactor solver and diagnostic procedure to call one shared internal first-deduction engine;
+- add positive, boundary, negative, and regression cases for Naked Triple, Naked Quad, Swordfish, and Jellyfish;
 - add a bounded validator state count, runtime limit, and truncation output;
-- implement the deduction diagnostic contract so candidate-only eliminations can be asserted automatically;
 - add a deterministic timeout test after runtime behavior is measured on SQL Server.
 
 ## Direct technique implementation
@@ -39,8 +44,6 @@ The methods marked `Generalized` in `docs/TECHNIQUE_COVERAGE.csv` are proven thr
 - ALS-XZ and ALS-AIC;
 - Kraken Fish;
 - explicit branch-based Forcing Chains and Forcing Nets.
-
-Explicit Naked Pair, Naked Triple, Naked Quad, X-Wing, Swordfish, and Jellyfish blocks exist but still require positive, boundary, negative, and regression tests through the future diagnostic contract.
 
 ## Runtime validation
 
