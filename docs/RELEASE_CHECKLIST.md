@@ -8,7 +8,8 @@ A release must not be marked production-ready until every mandatory item is comp
 - [x] Repository examples contain only synthetic generic data.
 - [x] Method sources and implementation provenance are documented.
 - [x] Machine-readable technique coverage is present.
-- [ ] No stale or contradictory implementation claims remain.
+- [x] Technique coverage has been reconciled with the actual source implementation modes.
+- [ ] No stale or contradictory implementation claims remain after runtime review.
 
 ## Static T-SQL review
 
@@ -17,6 +18,7 @@ A release must not be marked production-ready until every mandatory item is comp
 - [x] Installed procedure definitions contain no explicitly named constraints on local temporary tables.
 - [x] Installation fails if temporary-constraint hardening does not remove every known constraint name.
 - [x] Contract tests verify the English public parameter names and order.
+- [x] Status-contract hardening defines `SingleStepCompleted` and `IterationLimit`.
 - [ ] Every variable is declared before use.
 - [ ] No `CASE` expression is supplied directly as an `EXEC` parameter assignment.
 - [ ] No function call is supplied directly as a `RAISERROR` argument.
@@ -36,17 +38,26 @@ A release must not be marked production-ready until every mandatory item is comp
 - [ ] Uninstall succeeds.
 - [ ] Reinstallation after uninstall succeeds.
 
-## Functional validation
+## Prepared functional tests
+
+- [x] Smoke test exists.
+- [x] Unique, invalid, and multiple-solution validator tests exist.
+- [x] Installation contract tests exist.
+- [x] API behavior tests exist.
+- [x] Single-step, iteration-limit, natural-stall, multiple-solution, and disabled-backtracking tests exist.
+- [x] Direct Naked Single and Hidden Single tests exist.
+- [x] A diagnostic contract for candidate-only elimination tests is documented.
+
+## Functional validation still required
 
 - [ ] Smoke test passes.
 - [ ] Validator tests pass.
 - [ ] Installation contract tests pass.
 - [ ] API behavior tests pass.
-- [ ] Invalid-board tests pass.
-- [ ] Multiple-solution tests pass.
-- [ ] `@SingleStep` behavior passes.
-- [ ] Timeout and iteration-limit tests pass.
-- [ ] Positive and negative tests exist for every explicit technique.
+- [ ] Status boundary tests pass.
+- [ ] Direct set-technique tests pass.
+- [ ] Deterministic timeout test exists and passes.
+- [ ] Positive and negative tests exist for every explicit elimination technique.
 - [ ] Generalized-proof tests prove both valid eliminations and protected candidates.
 - [ ] A complete solution is independently revalidated.
 
