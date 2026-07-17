@@ -7,6 +7,7 @@ DROP PROCEDURE IF EXISTS dbo.USP_SudokuValidate;
 GO
 
 DROP TABLE IF EXISTS dbo.SudokuTechnique;
+DROP TABLE IF EXISTS dbo.SudokuPeer;
 DROP TABLE IF EXISTS dbo.BitCount511;
 DROP TABLE IF EXISTS dbo.SudokuDigitMask;
 DROP TABLE IF EXISTS dbo.SudokuPos;
