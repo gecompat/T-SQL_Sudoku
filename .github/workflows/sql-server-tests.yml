@@ -126,6 +126,24 @@ jobs:
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 05_direct_set_technique_tests.sql
 
+      - name: Run diagnostic elimination tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 06_diagnostic_elimination_tests.sql
+
+      - name: Run diagnostic contract tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 07_diagnostic_contract_tests.sql
+
       - name: Uninstall and reinstall
         shell: bash
         env:
@@ -138,7 +156,7 @@ jobs:
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 00_install.sql
 
-      - name: Verify reinstallation contract
+      - name: Verify reinstallation contracts
         shell: bash
         env:
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
@@ -146,3 +164,6 @@ jobs:
           docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 02_contract_tests.sql
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 07_diagnostic_contract_tests.sql
