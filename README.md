@@ -44,6 +44,8 @@ Important solver parameters:
 - `@PrintMessages`
 - `@Help`
 
+The exact statuses and result-set contracts are documented in [Public API contract](docs/API_CONTRACT.md).
+
 ## Implemented solving families
 
 The procedure executes inexpensive techniques first and restarts after every successful action.
@@ -64,7 +66,7 @@ The procedure executes inexpensive techniques first and restarts after every suc
 
 The inexpensive techniques are detected directly. More advanced named methods are functionally covered by the generalized contradiction-proof stage: a candidate is removed only when assuming that candidate true leaves no valid Sudoku completion. This produces a complete logical proof, although the solution-path row may report `Generalized Advanced Inference` rather than a specific geometric pattern name.
 
-The logical methods and terminology originate from established Sudoku community references. See [Sources and method provenance](docs/SOURCES.md) for a method-by-method attribution and the distinction between external logical rules and this repository's original T-SQL implementation.
+The exact implementation mode of every method is available in [Technique coverage](docs/TECHNIQUE_COVERAGE.csv). The logical methods and terminology originate from established Sudoku community references. See [Sources and method provenance](docs/SOURCES.md).
 
 ## Installation
 
@@ -87,20 +89,26 @@ Uninstall with `sql/01_uninstall.sql`.
 - one update per target cell and technique
 - restart after every successful technique
 - bounded expensive checks
+- precomputed peer relationships in `dbo.SudokuPeer`
 - no permissions granted by installation
 - no dependency on CLR or external code
 - optional diagnostic result sets
 
 ## Validation status
 
-The repository includes static guards, deterministic test scripts, and an independent validator. The SQL must still be compiled and executed on a SQL Server 2019+ test instance before production use; the repository was assembled without access to a live SQL Server engine.
+The repository includes static guards, deterministic test scripts, an independent validator, and a manually triggered SQL Server container workflow. The SQL must still be compiled and executed successfully before production use. See [Continuous integration](docs/CI.md) and [Release checklist](docs/RELEASE_CHECKLIST.md).
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Public API contract](docs/API_CONTRACT.md)
 - [Technique mapping](docs/TECHNIQUES.md)
+- [Technique coverage](docs/TECHNIQUE_COVERAGE.csv)
 - [Sources and method provenance](docs/SOURCES.md)
+- [Test matrix](docs/TEST_MATRIX.md)
 - [Testing](docs/TESTING.md)
+- [Continuous integration](docs/CI.md)
+- [Release checklist](docs/RELEASE_CHECKLIST.md)
 - [Security and repository data policy](SECURITY.md)
 
 ## License
