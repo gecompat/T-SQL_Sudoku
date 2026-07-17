@@ -108,6 +108,24 @@ jobs:
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 03_api_behavior_tests.sql
 
+      - name: Run status boundary tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 04_status_boundary_tests.sql
+
+      - name: Run direct set technique tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 05_direct_set_technique_tests.sql
+
       - name: Uninstall and reinstall
         shell: bash
         env:
