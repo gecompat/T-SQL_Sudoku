@@ -9,11 +9,11 @@ EXEC dbo.USP_SudokuSolve
     @Puzzle = '530070000600195000098000060800060003400803001700020006060000280000419005000080079',
     @Solution = @Solution OUTPUT,
     @Status = @Status OUTPUT,
-    @ErlaubeBacktracking = 1,
-    @ErlaubeForcing = 1,
-    @ErlaubeForcingNets = 0,
-    @ResultsetLoesungspfad = 0,
-    @ResultsetStatistik = 0;
+    @AllowBacktracking = 1,
+    @AllowForcing = 1,
+    @AllowForcingNets = 0,
+    @ReturnSolutionPath = 0,
+    @ReturnStatistics = 0;
 
 IF @Solution <> '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
 BEGIN
