@@ -21,7 +21,11 @@ DECLARE
     @EndPosition int,
     @SecondStartPosition int,
     @SecondEndPosition int,
-    @Replacement nvarchar(max);
+    @Replacement nvarchar(max),
+    @DiagnosticProcedureName nvarchar(128) = N'USP_SudokuDiagnoseFirstDeduction',
+    @EngineProcedureName nvarchar(128) = N'USP_SudokuFindFirstDeduction',
+    @ProcedureNamePosition int,
+    @SecondProcedureNamePosition int;
 
 SELECT
     @DiagnosticDefinition = ModuleDefinition.[definition]
@@ -37,43 +41,42 @@ BEGIN
 END;
 
 /*
-    SQL Server can normalize CREATE OR ALTER to CREATE in sys.sql_modules and
-    can preserve or add delimited identifiers. Support every expected header
-    form, while still requiring exactly one successful procedure rename.
+    SQL Server may normalize CREATE OR ALTER, CREATE, ALTER, and delimited
+    identifiers in sys.sql_modules. Rename only the first procedure-name token;
+    later occurrences can legitimately exist in Help text.
 */
-SET @EngineDefinition = @DiagnosticDefinition;
-SET @EngineDefinition = REPLACE
-(
-    @EngineDefinition,
-    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuDiagnoseFirstDeduction',
-    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
-);
-SET @EngineDefinition = REPLACE
-(
-    @EngineDefinition,
-    N'CREATE PROCEDURE dbo.USP_SudokuDiagnoseFirstDeduction',
-    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
-);
-SET @EngineDefinition = REPLACE
-(
-    @EngineDefinition,
-    N'CREATE OR ALTER PROCEDURE [dbo].[USP_SudokuDiagnoseFirstDeduction]',
-    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
-);
-SET @EngineDefinition = REPLACE
-(
-    @EngineDefinition,
-    N'CREATE PROCEDURE [dbo].[USP_SudokuDiagnoseFirstDeduction]',
-    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction'
-);
+SET @ProcedureNamePosition =
+    CHARINDEX(@DiagnosticProcedureName, @DiagnosticDefinition);
 
-IF @EngineDefinition = @DiagnosticDefinition
-   OR @EngineDefinition NOT LIKE N'%PROCEDURE dbo.USP_SudokuFindFirstDeduction%'
-   OR @EngineDefinition LIKE N'%PROCEDURE dbo.USP_SudokuDiagnoseFirstDeduction%'
-   OR @EngineDefinition LIKE N'%PROCEDURE [dbo].[USP_SudokuDiagnoseFirstDeduction]%'
+SET @SecondProcedureNamePosition =
+    CHARINDEX
+    (
+        @DiagnosticProcedureName,
+        @DiagnosticDefinition,
+        @ProcedureNamePosition + LEN(@DiagnosticProcedureName)
+    );
+
+IF @ProcedureNamePosition = 0
 BEGIN
     THROW 50521,
-          'The shared deduction engine procedure-name marker was not found or was ambiguous.',
+          'The shared deduction engine procedure-name token was not found.',
+          1;
+END;
+
+SET @EngineDefinition =
+    STUFF
+    (
+        @DiagnosticDefinition,
+        @ProcedureNamePosition,
+        LEN(@DiagnosticProcedureName),
+        @EngineProcedureName
+    );
+
+IF @EngineDefinition = @DiagnosticDefinition
+   OR CHARINDEX(@EngineProcedureName, @EngineDefinition) = 0
+BEGIN
+    THROW 50521,
+          'The shared deduction engine procedure name could not be replaced safely.',
           1;
 END;
 
