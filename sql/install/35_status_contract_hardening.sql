@@ -1,0 +1,67 @@
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+GO
+
+DECLARE
+    @Definition nvarchar(max),
+    @OldBlock nvarchar(max),
+    @NewBlock nvarchar(max);
+
+SELECT
+    @Definition = ModuleDefinition.[definition]
+FROM sys.sql_modules AS ModuleDefinition
+WHERE ModuleDefinition.[object_id] = OBJECT_ID(N'dbo.USP_SudokuSolve', N'P');
+
+IF @Definition IS NULL
+BEGIN
+    THROW 50410,
+          'dbo.USP_SudokuSolve was not found for status-contract hardening.',
+          1;
+END;
+
+SET @OldBlock = N'    IF @Status = ''Initialized''
+    BEGIN
+        IF @Solution NOT LIKE ''%0%''
+            SET @Status = ''SolvedLogically'';
+        ELSE
+            SET @Status = ''LogicStalled'';
+    END;';
+
+SET @NewBlock = N'    IF @Status = ''Initialized''
+    BEGIN
+        IF @Solution NOT LIKE ''%0%''
+            SET @Status = ''SolvedLogically'';
+        ELSE IF @SingleStep = 1
+                AND EXISTS (SELECT 1 FROM #TechniqueLog)
+            SET @Status = ''SingleStepCompleted'';
+        ELSE IF @IterationNumber >= @MaxIterations
+            SET @Status = ''IterationLimit'';
+        ELSE
+            SET @Status = ''LogicStalled'';
+    END;';
+
+IF CHARINDEX(@OldBlock, @Definition) = 0
+BEGIN
+    THROW 50411,
+          'The expected solver status block was not found.',
+          1;
+END;
+
+SET @Definition = REPLACE(@Definition, @OldBlock, @NewBlock);
+EXEC sys.sp_executesql @Definition;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.sql_modules AS ModuleDefinition
+    WHERE ModuleDefinition.[object_id] = OBJECT_ID(N'dbo.USP_SudokuSolve', N'P')
+      AND ModuleDefinition.[definition] LIKE N'%SingleStepCompleted%'
+      AND ModuleDefinition.[definition] LIKE N'%IterationLimit%'
+)
+BEGIN
+    THROW 50412,
+          'The solver status contract was not applied.',
+          1;
+END;
+GO
