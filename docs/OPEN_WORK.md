@@ -14,7 +14,11 @@ The repository is a testable release candidate, not a validated production relea
 - `tests/05_direct_set_technique_tests.sql` prepares direct Naked Single and Hidden Single tests;
 - `dbo.SudokuCandidateState` and `dbo.USP_SudokuDiagnoseFirstDeduction` provide a deterministic candidate-state diagnostic surface;
 - `tests/06_diagnostic_elimination_tests.sql` prepares positive and negative tests for Pointing, Claiming, Naked Pair, and X-Wing;
-- `tests/07_diagnostic_contract_tests.sql` validates the diagnostic type, procedure, parameters, errors, and Help behavior;
+- `tests/07_diagnostic_contract_tests.sql` validates the diagnostic type, wrapper, parameters, errors, and Help behavior;
+- `dbo.USP_SudokuFindFirstDeduction` is the shared explicit-deduction engine used by both the solver and diagnostic wrapper;
+- the solver installation removes its duplicated explicit-technique block and replaces it with one call to the shared engine;
+- candidate refresh now intersects current masks with legal masks, preserving earlier logical eliminations;
+- `tests/08_shared_engine_contract_tests.sql` verifies solver integration, wrapper integration, refresh preservation, and result equivalence;
 - the validator test suite includes unique, invalid, and multiple-solution puzzles;
 - `tools/static_checks.ps1` verifies that every known source constraint is covered by the mandatory hardening step;
 - technique coverage was reconciled with the actual solver source: XY-Wing, XYZ-Wing, hidden subsets, and ALS-XZ remain generalized rather than direct implementations.
@@ -22,10 +26,9 @@ The repository is a testable release candidate, not a validated production relea
 ## Static and contract work still open
 
 - run `tools/static_checks.ps1` in a checked-out repository and resolve any environmental findings;
-- compile the new diagnostic type and procedure on SQL Server;
-- execute all prepared status, contract, and technique tests;
-- compare diagnostic first-deduction rows with solver solution-path rows on the same states;
-- refactor solver and diagnostic procedure to call one shared internal first-deduction engine;
+- compile the shared engine, rewritten solver, diagnostic wrapper, and all tests on SQL Server;
+- execute all prepared status, contract, shared-engine, and technique tests;
+- verify that the dynamic source markers used by `26_shared_deduction_engine.sql` match SQL Server module text exactly;
 - add positive, boundary, negative, and regression cases for Naked Triple, Naked Quad, Swordfish, and Jellyfish;
 - add a bounded validator state count, runtime limit, and truncation output;
 - add a deterministic timeout test after runtime behavior is measured on SQL Server.
