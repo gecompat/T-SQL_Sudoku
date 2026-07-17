@@ -28,11 +28,6 @@ jobs:
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
         ports:
           - 1433:1433
-        options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P '${{ secrets.MSSQL_SA_PASSWORD }}' -Q 'SELECT 1'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 30
 
     steps:
       - name: Check out repository
@@ -47,6 +42,24 @@ jobs:
             echo "Repository secret MSSQL_SA_PASSWORD is required."
             exit 1
           fi
+
+      - name: Wait for SQL Server
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker exec "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+              -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server is ready."
+              exit 0
+            fi
+            echo "Waiting for SQL Server ($attempt/60)..."
+            sleep 2
+          done
+          echo "SQL Server did not become ready in time."
+          docker logs "${{ job.services.sqlserver.id }}"
+          exit 1
 
       - name: Create test database
         shell: bash
