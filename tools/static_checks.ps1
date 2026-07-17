@@ -44,21 +44,54 @@ $allowedSourceConstraintNames = @(
     'PK_Removal'
 )
 
+function Get-NamedLocalTempConstraints {
+    param(
+        [Parameter(Mandatory)]
+        [string[]] $Lines
+    )
+
+    $results = [System.Collections.Generic.List[string]]::new()
+    $insideLocalTempTable = $false
+
+    foreach ($line in $Lines) {
+        if (-not $insideLocalTempTable) {
+            if ($line -match '(?i)^\s*CREATE\s+TABLE\s+#\w+') {
+                $insideLocalTempTable = $true
+            }
+            else {
+                continue
+            }
+        }
+
+        $constraintMatch = [regex]::Match(
+            $line,
+            '(?i)\bCONSTRAINT\s+\[(?<Name>[^\]]+)\]'
+        )
+
+        if ($constraintMatch.Success) {
+            $results.Add($constraintMatch.Groups['Name'].Value)
+        }
+
+        if ($line -match '^\s*\);\s*(?:--.*)?$') {
+            $insideLocalTempTable = $false
+        }
+    }
+
+    return $results
+}
+
 foreach ($file in $sqlFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw
-    $relativePath = [System.IO.Path]::GetRelativePath($repositoryRoot, $file.FullName)
+    $lines = Get-Content -LiteralPath $file.FullName
+    $relativePath = [System.IO.Path]::GetRelativePath($repositoryRoot, $file.FullName).Replace('\', '/')
 
     if ($content -match '(?im)^\s*MERGE\s+') {
         $failures.Add("$relativePath contains MERGE.")
     }
 
-    $namedTempConstraintMatches = [regex]::Matches(
-        $content,
-        '(?is)CREATE\s+TABLE\s+#\w+.*?CONSTRAINT\s+\[(?<Name>[^\]]+)\]'
-    )
+    $namedTempConstraints = Get-NamedLocalTempConstraints -Lines $lines
 
-    foreach ($match in $namedTempConstraintMatches) {
-        $constraintName = $match.Groups['Name'].Value
+    foreach ($constraintName in $namedTempConstraints) {
         $isKnownProcedureSource = $relativePath -in @(
             'sql/install/10_USP_SudokuValidate.sql',
             'sql/install/20_USP_SudokuSolve.sql'
