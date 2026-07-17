@@ -14,7 +14,9 @@ A release must not be marked production-ready until every mandatory item is comp
 
 - [x] No `MERGE` remains in the helper-table installation.
 - [x] Permanent peer relationships are materialized in `dbo.SudokuPeer`.
-- [ ] No explicitly named constraints remain on local temporary tables.
+- [x] Installed procedure definitions contain no explicitly named constraints on local temporary tables.
+- [x] Installation fails if temporary-constraint hardening does not remove every known constraint name.
+- [x] Contract tests verify the English public parameter names and order.
 - [ ] Every variable is declared before use.
 - [ ] No `CASE` expression is supplied directly as an `EXEC` parameter assignment.
 - [ ] No function call is supplied directly as a `RAISERROR` argument.
@@ -38,6 +40,8 @@ A release must not be marked production-ready until every mandatory item is comp
 
 - [ ] Smoke test passes.
 - [ ] Validator tests pass.
+- [ ] Installation contract tests pass.
+- [ ] API behavior tests pass.
 - [ ] Invalid-board tests pass.
 - [ ] Multiple-solution tests pass.
 - [ ] `@SingleStep` behavior passes.
