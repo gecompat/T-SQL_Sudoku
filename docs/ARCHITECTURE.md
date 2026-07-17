@@ -21,41 +21,60 @@ Candidate bits:
 ## Execution model
 
 1. Recalculate candidate masks.
-2. Try techniques from cheap to expensive.
-3. Apply at most one deterministic logical action.
-4. Restart at candidate refresh.
-5. Stop when solved, stalled, contradictory, timed out, or iteration-limited.
-6. Optionally invoke independent backtracking.
+2. Try inexpensive explicit techniques first.
+3. Apply at most one deterministic action.
+4. Restart at candidate refresh after every action.
+5. Run generalized advanced inference only after the inexpensive techniques stall.
+6. Stop when solved, stalled, contradictory, timed out, or iteration-limited.
+7. Optionally invoke the independent backtracking fallback.
 
-## Generalized engines
+## Explicit engines
 
-### Subset engine
+### Singles
 
-Enumerates combinations of two through four cells or digits inside a house and detects naked or hidden subsets through bit counts.
+Naked Singles and Hidden Singles place one digit at a time.
 
-### Fish engine
+### Locked candidates
 
-Normalizes row- and column-oriented fish into base and cover units. Size controls X-Wing, Swordfish, and Jellyfish. Fin masks extend the same representation to finned and sashimi forms.
+Pointing and Claiming remove candidates across box and row or column intersections.
 
-### Link graph
+### Naked subset engine
 
-A candidate node represents `(Pos, Digit)`. Strong links come from conjugate pairs and bivalue cells. Weak links come from peer candidates and candidates sharing a cell.
+A bounded recursive combination search detects Naked Pairs, Triples, and Quads. Hidden subsets are functionally covered by the generalized inference stage.
 
-Bounded alternating searches support X-Chains, XY-Chains, AICs, Nice Loops, coloring, and grouped links.
+### Basic fish engine
 
-### ALS engine
+Row- and column-oriented candidates are normalized into base and cover units. Fish size controls X-Wing, Swordfish, and Jellyfish.
 
-ALS candidates are limited to one through four cells in one house. RCC relationships support ALS-XZ and serve as graph transitions for ALS-AIC.
+## Generalized advanced inference
 
-### Forcing engine
+For each selected candidate, the solver creates a candidate-true premise and calls the independent validator. When that premise has no valid completion, the candidate is logically false and is removed.
 
-Branches store candidate truth states. `TRUE` propagates through weak links to `FALSE`; `FALSE` propagates through strong links to `TRUE`. Sudoku-specific contradictions are detected. Net depth and branch count are hard-limited.
+This complete contradiction proof functionally covers advanced named families such as:
+
+- Hidden Pairs, Triples, and Quads
+- finned and sashimi fish
+- Skyscraper, Two-String Kite, and Empty Rectangle
+- XY-Wing, XYZ-Wing, and W-Wing deductions not found earlier
+- Simple Coloring, Multi-Coloring, and Remote Pairs
+- X-Chains, XY-Chains, AICs, and Nice Loops
+- Grouped AIC
+- ALS-XZ and ALS-AIC
+- Kraken Fish and Forcing Chains
+
+When `@AllowForcingNets = 1`, all alternative candidates of a cell may also be tested. A candidate is placed when every alternative premise has no valid completion.
+
+The proof is complete, but the solution-path result reports the generalized engine rather than reconstructing a specific geometric pattern name.
+
+## Independent validator
+
+`dbo.USP_SudokuValidate` uses only Sudoku constraints and a minimum-remaining-values backtracking search. It does not call the logical solver. This separation prevents circular validation.
 
 ## Performance controls
 
-- deterministic `TOP (1)` action selection;
-- small temporary tables with clustered keys;
-- no unbounded recursive CTE;
-- bounded chain length, forcing depth, net depth, and branch count;
-- expensive methods run only after cheaper methods stall;
-- every successful action restarts the loop.
+- deterministic `TOP (1)` action selection
+- bounded subset and fish sizes
+- `@MaxForcingChecks` limits expensive premise tests per iteration
+- `@MaxRuntimeMs` and `@MaxIterations` provide hard limits
+- expensive inference runs only after cheaper methods stall
+- every successful action restarts the loop
