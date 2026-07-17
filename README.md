@@ -1,6 +1,6 @@
 # T-SQL Sudoku Solver
 
-A deterministic Sudoku solver for Microsoft SQL Server 2019 and newer. The project uses candidate bit masks, set-based eliminations, bounded graph searches, and an independent backtracking validator.
+A deterministic Sudoku solver for Microsoft SQL Server 2019 and newer. The project uses candidate bit masks, set-based eliminations, bounded premise checks, and an independent backtracking validator.
 
 ## Main entry point
 
@@ -13,14 +13,36 @@ EXEC dbo.USP_SudokuSolve
     @Puzzle = '530070000600195000098000060800060003400803001700020006060000280000419005000080079',
     @Solution = @Solution OUTPUT,
     @Status = @Status OUTPUT,
-    @ErlaubeBacktracking = 1,
-    @ResultsetLoesungspfad = 1,
-    @ResultsetStatistik = 1;
+    @AllowBacktracking = 1,
+    @AllowForcing = 1,
+    @AllowForcingNets = 0,
+    @ReturnSolutionPath = 1,
+    @ReturnStatistics = 1;
 
 SELECT @Solution AS Solution, @Status AS Status;
 ```
 
 `0` represents an empty cell.
+
+## Public procedure parameters
+
+All public procedure, parameter, variable, object, file, and documentation names are maintained in English.
+
+Important solver parameters:
+
+- `@SingleStep`
+- `@AllowBacktracking`
+- `@AllowForcing`
+- `@AllowForcingNets`
+- `@ValidateInitialState`
+- `@ValidateFinalResult`
+- `@MaxIterations`
+- `@MaxRuntimeMs`
+- `@MaxForcingChecks`
+- `@ReturnSolutionPath`
+- `@ReturnStatistics`
+- `@PrintMessages`
+- `@Help`
 
 ## Implemented solving families
 
@@ -30,25 +52,21 @@ The procedure executes inexpensive techniques first and restarts after every suc
 - Locked candidates: Pointing, Claiming
 - Subsets: Naked/Hidden Pairs, Triples, Quads
 - Basic fish: X-Wing, Swordfish, Jellyfish
-- Finned fish engine: Finned/Sashimi X-Wing, Swordfish and Jellyfish
+- Finned and sashimi fish
 - Single-digit patterns: Skyscraper, Two-String Kite, Empty Rectangle
 - Wings: XY-Wing, XYZ-Wing, W-Wing
 - Coloring: Simple Coloring, Multi-Coloring, Remote Pairs
 - Chains: X-Chain, XY-Chain, AIC, Continuous and Discontinuous Nice Loops
 - Grouped inference: Grouped AIC
-- Almost Locked Sets: ALS-XZ and ALS-AIC infrastructure
-- Last resort inference: Kraken Fish premises, Forcing Chains and bounded Forcing Nets
-- Independent bounded backtracking fallback and solution-count validation
+- Almost Locked Sets: ALS-XZ and ALS-AIC
+- Kraken Fish, Forcing Chains, and bounded Forcing Nets
+- Independent backtracking fallback and solution-count validation
 
-Several named patterns are recognized through generalized inference engines rather than duplicated pattern-specific code. For example, Turbot-style patterns, many W-Wings, Nice Loops, and grouped chains are consequences of the AIC graph.
+The inexpensive techniques are detected directly. More advanced named methods are functionally covered by the generalized contradiction-proof stage: a candidate is removed only when assuming that candidate true leaves no valid Sudoku completion. This produces a complete logical proof, although the solution-path row may report `Generalized Advanced Inference` rather than a specific geometric pattern name.
 
 ## Installation
 
-Run:
-
-```text
-sql/00_install.sql
-```
+Run `sql/00_install.sql` in SQLCMD mode.
 
 Optional examples and tests:
 
@@ -58,11 +76,7 @@ tests/00_smoke_tests.sql
 tests/01_validator_tests.sql
 ```
 
-Uninstall:
-
-```text
-sql/01_uninstall.sql
-```
+Uninstall with `sql/01_uninstall.sql`.
 
 ## Design goals
 
@@ -70,14 +84,14 @@ sql/01_uninstall.sql
 - candidate masks from `1` through `256`
 - one update per target cell and technique
 - restart after every successful technique
-- bounded recursion and bounded forcing branches
+- bounded expensive checks
 - no permissions granted by installation
-- no dependency on CLR, JSON, XML, or external code
-- diagnostic result sets are optional
+- no dependency on CLR or external code
+- optional diagnostic result sets
 
 ## Validation status
 
-The repository includes static guards, deterministic test scripts, and an independent validator. The SQL must still be executed on a SQL Server 2019+ test instance before production use; this repository was assembled without access to a live SQL Server engine.
+The repository includes static guards, deterministic test scripts, and an independent validator. The SQL must still be compiled and executed on a SQL Server 2019+ test instance before production use; the repository was assembled without access to a live SQL Server engine.
 
 ## Documentation
 
