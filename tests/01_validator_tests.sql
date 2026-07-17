@@ -32,4 +32,20 @@ BEGIN
     THROW 51012, 'Validator test failed: invalid puzzle was accepted.', 1;
 END;
 
+EXEC dbo.USP_SudokuValidate
+    @Puzzle = '530678012672195348198342567850761023426853791713924856961537284287419635345286179',
+    @MaxSolutions = 2,
+    @SolutionCount = @SolutionCount OUTPUT,
+    @FirstSolution = @FirstSolution OUTPUT;
+
+IF @SolutionCount <> 2
+BEGIN
+    THROW 51013, 'Validator test failed: expected at least two solutions.', 1;
+END;
+
+IF @FirstSolution IS NULL OR @FirstSolution LIKE '%0%'
+BEGIN
+    THROW 51014, 'Validator test failed: first completion was not returned.', 1;
+END;
+
 PRINT 'Validator tests passed.';
