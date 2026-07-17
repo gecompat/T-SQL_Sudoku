@@ -8,12 +8,12 @@ SELECT
     @Definition = ModuleDefinition.[definition]
 FROM sys.sql_modules AS ModuleDefinition
 WHERE ModuleDefinition.[object_id] =
-      OBJECT_ID(N'dbo.USP_SudokuDiagnoseFirstDeduction', N'P');
+      OBJECT_ID(N'dbo.USP_SudokuFindFirstDeduction', N'P');
 
 IF @Definition IS NULL
 BEGIN
     THROW 50510,
-          'Diagnostic procedure was not found for definition hardening.',
+          'Shared deduction engine was not found for definition hardening.',
           1;
 END;
 
