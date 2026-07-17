@@ -2,8 +2,12 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 GO
 
+DROP PROCEDURE IF EXISTS dbo.USP_SudokuDiagnoseFirstDeduction;
 DROP PROCEDURE IF EXISTS dbo.USP_SudokuSolve;
 DROP PROCEDURE IF EXISTS dbo.USP_SudokuValidate;
+GO
+
+DROP TYPE IF EXISTS dbo.SudokuCandidateState;
 GO
 
 DROP TABLE IF EXISTS dbo.SudokuTechnique;
