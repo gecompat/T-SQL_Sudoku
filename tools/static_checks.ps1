@@ -39,6 +39,7 @@ else {
 
 $allowedSourceConstraintNames = @(
     'PK_Stack',
+    'PK_SearchStack',
     'PK_BoardCells',
     'PK_TechniqueLog',
     'PK_Removal'
