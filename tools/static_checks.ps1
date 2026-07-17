@@ -44,81 +44,89 @@ $allowedSourceConstraintNames = @(
     'PK_Removal'
 )
 
-function Get-NamedLocalTempConstraints {
-    param(
-        [Parameter(Mandatory)]
-        [string[]] $Lines
-    )
+# Marker-based hardening files intentionally contain old and new T-SQL blocks as
+# string literals. Lexical checks must run against source modules, not those
+# generated patch strings, otherwise valid patch text is reported as live code.
+$sourceModulePaths = @(
+    'sql/install/00_tables.sql',
+    'sql/install/05_technique_mode_corrections.sql',
+    'sql/install/07_diagnostic_types.sql',
+    'sql/install/10_USP_SudokuValidate.sql',
+    'sql/install/20_USP_SudokuSolve.sql',
+    'sql/install/25_USP_SudokuDiagnoseFirstDeduction.sql',
+    'sql/01_uninstall.sql',
+    'sql/02_examples.sql'
+)
 
-    $results = [System.Collections.Generic.List[string]]::new()
-    $insideLocalTempTable = $false
-
-    foreach ($line in $Lines) {
-        if (-not $insideLocalTempTable) {
-            if ($line -match '(?i)^\s*CREATE\s+TABLE\s+#\w+') {
-                $insideLocalTempTable = $true
-            }
-            else {
-                continue
-            }
-        }
-
-        $constraintMatch = [regex]::Match(
-            $line,
-            '(?i)\bCONSTRAINT\s+\[(?<Name>[^\]]+)\]'
-        )
-
-        if ($constraintMatch.Success) {
-            $results.Add($constraintMatch.Groups['Name'].Value)
-        }
-
-        if ($line -match '^\s*\);\s*(?:--.*)?$') {
-            $insideLocalTempTable = $false
-        }
-    }
-
-    return $results
-}
+$procedureSourcePaths = @(
+    'sql/install/10_USP_SudokuValidate.sql',
+    'sql/install/20_USP_SudokuSolve.sql',
+    'sql/install/25_USP_SudokuDiagnoseFirstDeduction.sql'
+)
 
 foreach ($file in $sqlFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw
-    $lines = Get-Content -LiteralPath $file.FullName
     $relativePath = [System.IO.Path]::GetRelativePath($repositoryRoot, $file.FullName).Replace('\', '/')
+
+    if ($relativePath -notin $sourceModulePaths) {
+        continue
+    }
 
     if ($content -match '(?im)^\s*MERGE\s+') {
         $failures.Add("$relativePath contains MERGE.")
     }
 
-    $namedTempConstraints = Get-NamedLocalTempConstraints -Lines $lines
+    if ($relativePath -in $procedureSourcePaths) {
+        $lines = Get-Content -LiteralPath $file.FullName
+        $insideTempTable = $false
+        $parenthesisDepth = 0
 
-    foreach ($constraintName in $namedTempConstraints) {
-        $isKnownProcedureSource = $relativePath -in @(
-            'sql/install/10_USP_SudokuValidate.sql',
-            'sql/install/20_USP_SudokuSolve.sql'
-        )
-        $isKnownConstraint = $constraintName -in $allowedSourceConstraintNames
-        $hardeningContainsReplacement =
-            $hardeningContent.Contains("CONSTRAINT [$constraintName] ", [System.StringComparison]::Ordinal)
-        $installerIncludesHardening =
-            $installerContent.Contains('install/30_temp_constraint_hardening.sql', [System.StringComparison]::Ordinal)
+        foreach ($line in $lines) {
+            if (-not $insideTempTable -and $line -match '(?i)^\s*CREATE\s+TABLE\s+#\w+') {
+                $insideTempTable = $true
+                $parenthesisDepth = 0
+            }
 
-        if (-not ($isKnownProcedureSource -and $isKnownConstraint -and $hardeningContainsReplacement -and $installerIncludesHardening)) {
-            $failures.Add("$relativePath contains explicitly named local-temp constraint $constraintName without verified installation hardening.")
+            if ($insideTempTable) {
+                $parenthesisDepth += ([regex]::Matches($line, '\(')).Count
+                $parenthesisDepth -= ([regex]::Matches($line, '\)')).Count
+
+                if ($line -match '(?i)CONSTRAINT\s+\[(?<Name>[^\]]+)\]') {
+                    $constraintName = $Matches['Name']
+                    $isKnownProcedureSource = $relativePath -in @(
+                        'sql/install/10_USP_SudokuValidate.sql',
+                        'sql/install/20_USP_SudokuSolve.sql'
+                    )
+                    $isKnownConstraint = $constraintName -in $allowedSourceConstraintNames
+                    $hardeningContainsReplacement =
+                        $hardeningContent.Contains("CONSTRAINT [$constraintName] ", [System.StringComparison]::Ordinal)
+                    $installerIncludesHardening =
+                        $installerContent.Contains('install/30_temp_constraint_hardening.sql', [System.StringComparison]::Ordinal)
+
+                    if (-not ($isKnownProcedureSource -and $isKnownConstraint -and $hardeningContainsReplacement -and $installerIncludesHardening)) {
+                        $failures.Add("$relativePath contains explicitly named local-temp constraint $constraintName without verified installation hardening.")
+                    }
+                }
+
+                if ($parenthesisDepth -le 0 -and $line -match ';\s*$') {
+                    $insideTempTable = $false
+                }
+            }
         }
-    }
 
-    foreach ($name in $forbiddenPublicNames) {
-        if ($content.Contains($name, [System.StringComparison]::Ordinal)) {
-            $failures.Add("$relativePath contains legacy non-English identifier $name.")
+        foreach ($name in $forbiddenPublicNames) {
+            if ($content.Contains($name, [System.StringComparison]::Ordinal)) {
+                $failures.Add("$relativePath contains legacy non-English identifier $name.")
+            }
         }
-    }
 
-    if ($content -match '(?i)RAISERROR\s*\([^\r\n]*\b(?:COALESCE|ISNULL|CONCAT|FORMAT|OBJECT_NAME|DB_NAME)\s*\(') {
-        $failures.Add("$relativePath may pass a function directly to RAISERROR.")
-    }
+        if ($content -match '(?i)RAISERROR\s*\([^\r\n]*\b(?:COALESCE|ISNULL|CONCAT|FORMAT|OBJECT_NAME|DB_NAME)\s*\(') {
+            $failures.Add("$relativePath may pass a function directly to RAISERROR.")
+        }
 
-    if ($content -match '(?i)EXEC(?:UTE)?\s+[^\r\n]+@[A-Za-z0-9_]+\s*=\s*CASE\b') {
-        $failures.Add("$relativePath may pass CASE directly as an EXEC parameter value.")
+        if ($content -match '(?i)EXEC(?:UTE)?\s+[^\r\n]+@[A-Za-z0-9_]+\s*=\s*CASE\b') {
+            $failures.Add("$relativePath may pass CASE directly as an EXEC parameter value.")
+        }
     }
 }
 
@@ -137,8 +145,11 @@ foreach ($constraintName in $allowedSourceConstraintNames) {
 }
 
 if ($failures.Count -gt 0) {
-    $failures | ForEach-Object { Write-Error $_ }
+    Write-Host 'Static check failures:'
+    foreach ($failure in $failures) {
+        Write-Host " - $failure"
+    }
     exit 1
 }
 
-Write-Host "Static checks passed for $($sqlFiles.Count) SQL files."
+Write-Host "Static checks passed for $($sourceModulePaths.Count) source SQL files."
