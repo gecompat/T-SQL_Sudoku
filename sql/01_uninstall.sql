@@ -3,6 +3,7 @@ SET XACT_ABORT ON;
 GO
 
 DROP PROCEDURE IF EXISTS dbo.USP_SudokuDiagnoseFirstDeduction;
+DROP PROCEDURE IF EXISTS dbo.USP_SudokuFindFirstDeduction;
 DROP PROCEDURE IF EXISTS dbo.USP_SudokuSolve;
 DROP PROCEDURE IF EXISTS dbo.USP_SudokuValidate;
 GO
