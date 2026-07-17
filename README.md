@@ -73,11 +73,24 @@ A generalized deduction removes a candidate only when assuming it true leaves no
 
 The exact implementation mode of every method is available in [Technique coverage](docs/TECHNIQUE_COVERAGE.csv). The logical methods and terminology originate from established Sudoku community references. See [Sources and method provenance](docs/SOURCES.md).
 
+## Diagnostic deduction API
+
+`dbo.USP_SudokuDiagnoseFirstDeduction` returns the first deterministic explicit deduction with candidate masks before and after the action. It accepts either a normal puzzle or a complete 81-row `dbo.SudokuCandidateState` table value for controlled unit tests.
+
+The diagnostic order currently covers:
+
+- Naked Single and Hidden Single
+- Pointing and Claiming
+- Naked Pair, Naked Triple, and Naked Quad
+- X-Wing, Swordfish, and Jellyfish
+
+See [Deduction diagnostic contract](docs/DIAGNOSTIC_CONTRACT.md).
+
 ## Installation
 
 Run `sql/00_install.sql` in SQLCMD mode.
 
-The final installation steps normalize local temporary-table constraints and align terminal statuses with the documented API contract.
+The final installation steps normalize local temporary-table constraints, harden the diagnostic definition, and align terminal statuses with the documented API contract.
 
 Optional examples and tests:
 
@@ -89,6 +102,8 @@ tests/02_contract_tests.sql
 tests/03_api_behavior_tests.sql
 tests/04_status_boundary_tests.sql
 tests/05_direct_set_technique_tests.sql
+tests/06_diagnostic_elimination_tests.sql
+tests/07_diagnostic_contract_tests.sql
 ```
 
 Uninstall with `sql/01_uninstall.sql`.
@@ -108,7 +123,7 @@ Uninstall with `sql/01_uninstall.sql`.
 
 ## Validation status
 
-The repository includes static guards, deterministic test scripts, an independent validator, and a manually triggered SQL Server container workflow. The SQL and prepared tests must still be compiled and executed successfully before production use. See [Continuous integration](docs/CI.md) and [Release checklist](docs/RELEASE_CHECKLIST.md).
+The repository includes static guards, deterministic test scripts, an independent validator, a diagnostic candidate-state API, and a manually triggered SQL Server container workflow. The SQL and prepared tests must still be compiled and executed successfully before production use. See [Continuous integration](docs/CI.md) and [Release checklist](docs/RELEASE_CHECKLIST.md).
 
 ## Documentation
 
