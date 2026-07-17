@@ -1,0 +1,8 @@
+*.user
+*.suo
+*.sqlproj.user
+.vs/
+TestResults/
+*.log
+*.bak
+*.zip
