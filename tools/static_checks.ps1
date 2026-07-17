@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$sqlFiles = Get-ChildItem -Path (Join-Path $repositoryRoot 'sql') -Recurse -File -Filter '*.sql'
+$sqlRoot = Join-Path $repositoryRoot 'sql'
+$sqlFiles = Get-ChildItem -Path $sqlRoot -Recurse -File -Filter '*.sql'
 
 $failures = [System.Collections.Generic.List[string]]::new()
 
@@ -21,6 +22,28 @@ $forbiddenPublicNames = @(
     '@Hilfe'
 )
 
+$hardeningPath = Join-Path $sqlRoot 'install/30_temp_constraint_hardening.sql'
+$installerPath = Join-Path $sqlRoot '00_install.sql'
+$hardeningContent = if (Test-Path -LiteralPath $hardeningPath) {
+    Get-Content -LiteralPath $hardeningPath -Raw
+}
+else {
+    ''
+}
+$installerContent = if (Test-Path -LiteralPath $installerPath) {
+    Get-Content -LiteralPath $installerPath -Raw
+}
+else {
+    ''
+}
+
+$allowedSourceConstraintNames = @(
+    'PK_Stack',
+    'PK_BoardCells',
+    'PK_TechniqueLog',
+    'PK_Removal'
+)
+
 foreach ($file in $sqlFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw
     $relativePath = [System.IO.Path]::GetRelativePath($repositoryRoot, $file.FullName)
@@ -29,8 +52,26 @@ foreach ($file in $sqlFiles) {
         $failures.Add("$relativePath contains MERGE.")
     }
 
-    if ($content -match '(?is)CREATE\s+TABLE\s+#\w+.*?CONSTRAINT\s+\[') {
-        $failures.Add("$relativePath contains an explicitly named constraint on a local temporary table.")
+    $namedTempConstraintMatches = [regex]::Matches(
+        $content,
+        '(?is)CREATE\s+TABLE\s+#\w+.*?CONSTRAINT\s+\[(?<Name>[^\]]+)\]'
+    )
+
+    foreach ($match in $namedTempConstraintMatches) {
+        $constraintName = $match.Groups['Name'].Value
+        $isKnownProcedureSource = $relativePath -in @(
+            'sql/install/10_USP_SudokuValidate.sql',
+            'sql/install/20_USP_SudokuSolve.sql'
+        )
+        $isKnownConstraint = $constraintName -in $allowedSourceConstraintNames
+        $hardeningContainsReplacement =
+            $hardeningContent.Contains("CONSTRAINT [$constraintName] ", [System.StringComparison]::Ordinal)
+        $installerIncludesHardening =
+            $installerContent.Contains('install/30_temp_constraint_hardening.sql', [System.StringComparison]::Ordinal)
+
+        if (-not ($isKnownProcedureSource -and $isKnownConstraint -and $hardeningContainsReplacement -and $installerIncludesHardening)) {
+            $failures.Add("$relativePath contains explicitly named local-temp constraint $constraintName without verified installation hardening.")
+        }
     }
 
     foreach ($name in $forbiddenPublicNames) {
@@ -45,6 +86,20 @@ foreach ($file in $sqlFiles) {
 
     if ($content -match '(?i)EXEC(?:UTE)?\s+[^\r\n]+@[A-Za-z0-9_]+\s*=\s*CASE\b') {
         $failures.Add("$relativePath may pass CASE directly as an EXEC parameter value.")
+    }
+}
+
+if (-not (Test-Path -LiteralPath $hardeningPath)) {
+    $failures.Add('sql/install/30_temp_constraint_hardening.sql is missing.')
+}
+
+if (-not $installerContent.Contains('install/30_temp_constraint_hardening.sql', [System.StringComparison]::Ordinal)) {
+    $failures.Add('sql/00_install.sql does not include temporary-constraint hardening.')
+}
+
+foreach ($constraintName in $allowedSourceConstraintNames) {
+    if (-not $hardeningContent.Contains("CONSTRAINT [$constraintName] ", [System.StringComparison]::Ordinal)) {
+        $failures.Add("Temporary-constraint hardening does not cover $constraintName.")
     }
 }
 
