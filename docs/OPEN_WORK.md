@@ -4,9 +4,20 @@ The repository is a testable release candidate, not a validated production relea
 
 ## Static code work
 
-- remove explicitly named constraints from every local temporary table in the large solver and validator modules;
-- run `tools/static_checks.ps1` and resolve every finding;
+Completed without a live SQL Server:
+
+- helper-table installation no longer uses `MERGE`;
+- permanent peer relationships are materialized in `dbo.SudokuPeer`;
+- installation normalizes the created procedures so local temporary-table constraints are anonymous;
+- `tests/02_contract_tests.sql` verifies helper data, English public parameters, and installed procedure definitions;
+- `tests/03_api_behavior_tests.sql` verifies documented input errors, invalid-board status, and Help behavior;
+- `tools/static_checks.ps1` verifies that every known source constraint is covered by the mandatory hardening step.
+
+Still open:
+
+- run `tools/static_checks.ps1` in a checked-out repository and resolve any environmental findings;
 - verify all status values documented in `docs/API_CONTRACT.md` are emitted consistently by the procedure;
+- add explicit tests for `@SingleStep`, timeout, iteration limits, and multiple-solution solver status;
 - add validator limits and expose whether a solution-count search was truncated.
 
 ## Direct technique implementation
