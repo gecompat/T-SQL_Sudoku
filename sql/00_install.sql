@@ -5,6 +5,7 @@
 :r $(RootPath)/install/10_USP_SudokuValidate.sql
 :r $(RootPath)/install/20_USP_SudokuSolve.sql
 :r $(RootPath)/install/30_temp_constraint_hardening.sql
+:r $(RootPath)/install/35_status_contract_hardening.sql
 
 PRINT 'T-SQL Sudoku installation completed.';
 GO
