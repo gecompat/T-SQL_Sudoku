@@ -90,6 +90,24 @@ jobs:
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 01_validator_tests.sql
 
+      - name: Run installation contract tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 02_contract_tests.sql
+
+      - name: Run API behavior tests
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 03_api_behavior_tests.sql
+
       - name: Uninstall and reinstall
         shell: bash
         env:
@@ -101,3 +119,12 @@ jobs:
           docker exec -w /workspace/sql "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
             -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
             -i 00_install.sql
+
+      - name: Verify reinstallation contract
+        shell: bash
+        env:
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        run: |
+          docker exec -w /workspace/tests "${{ job.services.sqlserver.id }}" /opt/mssql-tools18/bin/sqlcmd \
+            -C -b -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -d SudokuTest \
+            -i 02_contract_tests.sql
