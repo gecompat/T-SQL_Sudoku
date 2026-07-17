@@ -64,6 +64,8 @@ The procedure executes inexpensive techniques first and restarts after every suc
 
 The inexpensive techniques are detected directly. More advanced named methods are functionally covered by the generalized contradiction-proof stage: a candidate is removed only when assuming that candidate true leaves no valid Sudoku completion. This produces a complete logical proof, although the solution-path row may report `Generalized Advanced Inference` rather than a specific geometric pattern name.
 
+The logical methods and terminology originate from established Sudoku community references. See [Sources and method provenance](docs/SOURCES.md) for a method-by-method attribution and the distinction between external logical rules and this repository's original T-SQL implementation.
+
 ## Installation
 
 Run `sql/00_install.sql` in SQLCMD mode.
@@ -97,6 +99,7 @@ The repository includes static guards, deterministic test scripts, and an indepe
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Technique mapping](docs/TECHNIQUES.md)
+- [Sources and method provenance](docs/SOURCES.md)
 - [Testing](docs/TESTING.md)
 - [Security and repository data policy](SECURITY.md)
 
