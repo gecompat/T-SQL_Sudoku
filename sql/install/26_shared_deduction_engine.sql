@@ -139,8 +139,8 @@ SET @EngineDefinition = REPLACE
     CREATE TABLE #BoardCells'
 );
 
-IF @EngineDefinition NOT LIKE N'%USP_SudokuFindFirstDeduction%'
-   OR @EngineDefinition NOT LIKE N'%THROW 50502%'
+IF CHARINDEX(N'USP_SudokuFindFirstDeduction', @EngineDefinition) = 0
+   OR CHARINDEX(N'THROW 50502', @EngineDefinition) = 0
 BEGIN
     THROW 50522,
           'The shared deduction engine definition could not be normalized safely.',
@@ -215,8 +215,11 @@ SET @SolverDefinition = REPLACE
     N'CONVERT(smallint, target.[CandidateMask] & (511 & ~used.[UsedMask]))'
 );
 
-IF @SolverDefinition NOT LIKE
-   N'%target.[CandidateMask] & (511 & ~used.[UsedMask])%'
+IF CHARINDEX
+   (
+       N'target.[CandidateMask] & (511 & ~used.[UsedMask])',
+       @SolverDefinition
+   ) = 0
 BEGIN
     THROW 50524,
           'The candidate-refresh preservation marker was not found.',
@@ -364,8 +367,8 @@ SET @SolverDefinition =
         @Replacement
     );
 
-IF @SolverDefinition NOT LIKE N'%USP_SudokuFindFirstDeduction%'
-   OR @SolverDefinition LIKE N'%        -- Naked Single%'
+IF CHARINDEX(N'USP_SudokuFindFirstDeduction', @SolverDefinition) = 0
+   OR CHARINDEX(N'        -- Naked Single', @SolverDefinition) <> 0
 BEGIN
     THROW 50526,
           'The solver was not rewritten to use the shared deduction engine.',
