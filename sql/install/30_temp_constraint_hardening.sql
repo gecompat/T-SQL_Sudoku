@@ -6,15 +6,13 @@ GO
     Local temporary tables are created in tempdb. Explicitly named constraints
     on local temporary tables can collide when multiple sessions compile or
     execute the same procedure concurrently.
-
-    The source procedures are normalized after creation so that local temporary
-    table constraints remain anonymous while the rest of each definition stays
-    unchanged.
 */
 DECLARE
     @ObjectName sysname,
     @Definition nvarchar(max),
-    @OriginalDefinition nvarchar(max);
+    @OriginalDefinition nvarchar(max),
+    @ParameterStart int,
+    @AlterHeader nvarchar(300);
 
 DECLARE ProcedureCursor CURSOR LOCAL FAST_FORWARD FOR
 SELECT ProcedureName
@@ -57,6 +55,23 @@ BEGIN
 
     IF @Definition <> @OriginalDefinition
     BEGIN
+        SET @ParameterStart = CHARINDEX(N'(', @Definition);
+
+        IF @ParameterStart = 0
+        BEGIN
+            CLOSE ProcedureCursor;
+            DEALLOCATE ProcedureCursor;
+
+            THROW 50402,
+                  'A procedure parameter-list marker was not found during temporary-constraint hardening.',
+                  1;
+        END;
+
+        SET @AlterHeader = N'ALTER PROCEDURE ' + @ObjectName;
+        SET @Definition =
+            @AlterHeader + CHAR(13) + CHAR(10) +
+            SUBSTRING(@Definition, @ParameterStart, LEN(@Definition));
+
         EXEC sys.sp_executesql @Definition;
     END;
 
@@ -79,11 +94,11 @@ IF EXISTS
           )
       AND
       (
-          ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_Stack]%'
-          OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_SearchStack]%'
-          OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_BoardCells]%'
-          OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_TechniqueLog]%'
-          OR ModuleDefinition.[definition] LIKE N'%CONSTRAINT [PK_Removal]%'
+          CHARINDEX(N'CONSTRAINT [PK_Stack]', ModuleDefinition.[definition]) > 0
+          OR CHARINDEX(N'CONSTRAINT [PK_SearchStack]', ModuleDefinition.[definition]) > 0
+          OR CHARINDEX(N'CONSTRAINT [PK_BoardCells]', ModuleDefinition.[definition]) > 0
+          OR CHARINDEX(N'CONSTRAINT [PK_TechniqueLog]', ModuleDefinition.[definition]) > 0
+          OR CHARINDEX(N'CONSTRAINT [PK_Removal]', ModuleDefinition.[definition]) > 0
       )
 )
 BEGIN
