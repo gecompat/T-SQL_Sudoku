@@ -9,8 +9,12 @@ IF NOT EXISTS
     SELECT 1
     FROM sys.sql_modules AS ModuleDefinition
     WHERE ModuleDefinition.[object_id] = OBJECT_ID(N'dbo.USP_SudokuSolve', N'P')
-      AND ModuleDefinition.[definition] LIKE N'%EXEC dbo.USP_SudokuFindFirstDeduction%'
-      AND ModuleDefinition.[definition] LIKE N'%target.[CandidateMask] & (511 & ~used.[UsedMask])%'
+      AND CHARINDEX(N'EXEC dbo.USP_SudokuFindFirstDeduction', ModuleDefinition.[definition]) > 0
+      AND CHARINDEX
+          (
+              N'target.[CandidateMask] & (511 & ~used.[UsedMask])',
+              ModuleDefinition.[definition]
+          ) > 0
 )
 BEGIN
     THROW 51071, 'Shared-engine test failed: solver is not integrated or candidate eliminations are not preserved.', 1;
@@ -21,7 +25,7 @@ IF EXISTS
     SELECT 1
     FROM sys.sql_modules AS ModuleDefinition
     WHERE ModuleDefinition.[object_id] = OBJECT_ID(N'dbo.USP_SudokuSolve', N'P')
-      AND ModuleDefinition.[definition] LIKE N'%        -- Naked Single%'
+      AND CHARINDEX(N'        -- Naked Single', ModuleDefinition.[definition]) > 0
 )
 BEGIN
     THROW 51072, 'Shared-engine test failed: duplicated explicit solver block remains installed.', 1;
@@ -32,7 +36,7 @@ IF NOT EXISTS
     SELECT 1
     FROM sys.sql_modules AS ModuleDefinition
     WHERE ModuleDefinition.[object_id] = OBJECT_ID(N'dbo.USP_SudokuDiagnoseFirstDeduction', N'P')
-      AND ModuleDefinition.[definition] LIKE N'%EXEC dbo.USP_SudokuFindFirstDeduction%'
+      AND CHARINDEX(N'EXEC dbo.USP_SudokuFindFirstDeduction', ModuleDefinition.[definition]) > 0
 )
 BEGIN
     THROW 51073, 'Shared-engine test failed: diagnostic wrapper does not call the shared engine.', 1;
