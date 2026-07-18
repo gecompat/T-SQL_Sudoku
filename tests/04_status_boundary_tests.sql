@@ -94,10 +94,11 @@ BEGIN
 END;
 
 -------------------------------------------------------------------------------
--- A near-complete deadly rectangle has at least two valid completions.
+-- Removing every 1 and 2 from a valid completed board guarantees at least two
+-- completions because globally swapping digits 1 and 2 yields another solution.
 -------------------------------------------------------------------------------
 DECLARE @MultipleSolutionPuzzle char(81) =
-    '530678012672195348198342567850761023426853791713924856961537284287419635345286179';
+    '534678900670095348098340567859760403406853790703904856960537084087409635345086079';
 
 EXEC dbo.USP_SudokuSolve
     @Puzzle = @MultipleSolutionPuzzle,
