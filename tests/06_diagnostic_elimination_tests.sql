@@ -174,13 +174,14 @@ END;
 
 -------------------------------------------------------------------------------
 -- X-Wing positive and negative cases
+-- Base rows 1 and 4 avoid an earlier Pointing pattern in the same box band.
 -------------------------------------------------------------------------------
 DELETE FROM @Result;
 UPDATE @CandidateState SET [CandidateMask] = 511;
 UPDATE @CandidateState
 SET [CandidateMask] = CONVERT(smallint, [CandidateMask] & ~1)
-WHERE [Pos] BETWEEN 1 AND 18
-  AND [Pos] NOT IN (1, 4, 10, 13);
+WHERE ([Pos] BETWEEN 1 AND 9 OR [Pos] BETWEEN 28 AND 36)
+  AND [Pos] NOT IN (1, 4, 28, 31);
 
 INSERT INTO @Result
 EXEC dbo.USP_SudokuDiagnoseFirstDeduction
@@ -195,7 +196,7 @@ IF NOT EXISTS
     FROM @Result
     WHERE [TechniqueName] = 'X-Wing'
       AND [ActionType] = 'Eliminate'
-      AND [Pos] IN (19, 22)
+      AND [Pos] IN (10, 13)
       AND ([RemovedMask] & 1) <> 0
 )
 BEGIN
@@ -206,8 +207,8 @@ DELETE FROM @Result;
 UPDATE @CandidateState SET [CandidateMask] = 511;
 UPDATE @CandidateState
 SET [CandidateMask] = CONVERT(smallint, [CandidateMask] & ~1)
-WHERE [Pos] BETWEEN 1 AND 18
-  AND [Pos] NOT IN (1, 4, 10, 13, 14);
+WHERE ([Pos] BETWEEN 1 AND 9 OR [Pos] BETWEEN 28 AND 36)
+  AND [Pos] NOT IN (1, 4, 28, 31, 32);
 
 INSERT INTO @Result
 EXEC dbo.USP_SudokuDiagnoseFirstDeduction
