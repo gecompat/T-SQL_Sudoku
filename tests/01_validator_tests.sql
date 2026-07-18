@@ -32,8 +32,12 @@ BEGIN
     THROW 51012, 'Validator test failed: invalid puzzle was accepted.', 1;
 END;
 
+/*
+    This puzzle is derived from a valid completed board by removing every 1 and 2.
+    At least two completions therefore exist by globally swapping digits 1 and 2.
+*/
 EXEC dbo.USP_SudokuValidate
-    @Puzzle = '530678012672195348198342567850761023426853791713924856961537284287419635345286179',
+    @Puzzle = '534678900670095348098340567859760403406853790703904856960537084087409635345086079',
     @MaxSolutions = 2,
     @SolutionCount = @SolutionCount OUTPUT,
     @FirstSolution = @FirstSolution OUTPUT;
