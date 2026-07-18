@@ -19,17 +19,40 @@ BEGIN
           1;
 END;
 
+/*
+    The engine is called from dbo.USP_SudokuSolve, which also owns local temp
+    tables named #BoardCells and #Removal. Nested stored procedures can resolve
+    a local-temp reference to an outer table with the same name. Use engine-
+    specific names so column binding is deterministic and independent of the
+    caller's temp-table schema.
+*/
+SET @Definition = REPLACE(@Definition, N'#BoardCells', N'#EngineBoardCells');
+SET @Definition = REPLACE(@Definition, N'#Deduction', N'#EngineDeduction');
+SET @Definition = REPLACE(@Definition, N'#Removal', N'#EngineRemoval');
+
 SET @Definition = REPLACE
 (
     @Definition,
     N'                AND
-                (
-                    (@UnitType IS NULL AND 1 = 1)
-                    OR 1 = 1
-                )
-                AND',
+                 (
+                     (@UnitType IS NULL AND 1 = 1)
+                     OR 1 = 1
+                 )
+                 AND',
     N'                AND'
 );
+
+IF CHARINDEX(N'#EngineBoardCells', @Definition) = 0
+   OR CHARINDEX(N'#EngineDeduction', @Definition) = 0
+   OR CHARINDEX(N'#EngineRemoval', @Definition) = 0
+   OR CHARINDEX(N'CREATE TABLE #BoardCells', @Definition) <> 0
+   OR CHARINDEX(N'CREATE TABLE #Deduction', @Definition) <> 0
+   OR CHARINDEX(N'CREATE TABLE #Removal', @Definition) <> 0
+BEGIN
+    THROW 50512,
+          'Shared deduction engine temp-table names could not be isolated safely.',
+          1;
+END;
 
 SET @ParameterStart = CHARINDEX(N'(', @Definition);
 
