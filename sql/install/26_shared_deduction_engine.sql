@@ -25,7 +25,7 @@ DECLARE
     @DiagnosticProcedureName nvarchar(128) = N'USP_SudokuDiagnoseFirstDeduction',
     @EngineProcedureName nvarchar(128) = N'USP_SudokuFindFirstDeduction',
     @ProcedureNamePosition int,
-    @SecondProcedureNamePosition int;
+    @ParameterStart int;
 
 SELECT
     @DiagnosticDefinition = ModuleDefinition.[definition]
@@ -40,21 +40,8 @@ BEGIN
           1;
 END;
 
-/*
-    SQL Server may normalize CREATE OR ALTER, CREATE, ALTER, and delimited
-    identifiers in sys.sql_modules. Rename only the first procedure-name token;
-    later occurrences can legitimately exist in Help text.
-*/
 SET @ProcedureNamePosition =
     CHARINDEX(@DiagnosticProcedureName, @DiagnosticDefinition);
-
-SET @SecondProcedureNamePosition =
-    CHARINDEX
-    (
-        @DiagnosticProcedureName,
-        @DiagnosticDefinition,
-        @ProcedureNamePosition + LEN(@DiagnosticProcedureName)
-    );
 
 IF @ProcedureNamePosition = 0
 BEGIN
@@ -147,6 +134,22 @@ BEGIN
           1;
 END;
 
+/* sys.sql_modules returns CREATE PROCEDURE text. Rebuild the header for an
+   idempotent create-or-alter execution while preserving the full parameter list. */
+SET @ParameterStart = CHARINDEX(N'(', @EngineDefinition);
+
+IF @ParameterStart = 0
+BEGIN
+    THROW 50528,
+          'The shared deduction engine parameter-list marker was not found.',
+          1;
+END;
+
+SET @EngineDefinition =
+    N'CREATE OR ALTER PROCEDURE dbo.USP_SudokuFindFirstDeduction' +
+    CHAR(13) + CHAR(10) +
+    SUBSTRING(@EngineDefinition, @ParameterStart, LEN(@EngineDefinition));
+
 EXEC sys.sp_executesql @EngineDefinition;
 GO
 
@@ -193,7 +196,8 @@ DECLARE
     @EndPosition int,
     @SecondStartPosition int,
     @SecondEndPosition int,
-    @Replacement nvarchar(max);
+    @Replacement nvarchar(max),
+    @ParameterStart int;
 
 SELECT
     @SolverDefinition = ModuleDefinition.[definition]
@@ -226,23 +230,26 @@ BEGIN
           1;
 END;
 
-SET @StartPosition = CHARINDEX(@StartMarker, @SolverDefinition);
-SET @EndPosition = CHARINDEX(@EndMarker, @SolverDefinition);
-SET @SecondStartPosition = CHARINDEX(@StartMarker, @SolverDefinition, @StartPosition + 1);
-SET @SecondEndPosition = CHARINDEX(@EndMarker, @SolverDefinition, @EndPosition + 1);
-
-IF @StartPosition = 0
-   OR @EndPosition = 0
-   OR @StartPosition >= @EndPosition
-   OR @SecondStartPosition <> 0
-   OR @SecondEndPosition <> 0
+/* On a repeated installation the solver already uses the shared engine. */
+IF CHARINDEX(N'        -- Shared explicit deduction engine', @SolverDefinition) = 0
 BEGIN
-    THROW 50525,
-          'The explicit-technique solver block could not be identified uniquely.',
-          1;
-END;
+    SET @StartPosition = CHARINDEX(@StartMarker, @SolverDefinition);
+    SET @EndPosition = CHARINDEX(@EndMarker, @SolverDefinition);
+    SET @SecondStartPosition = CHARINDEX(@StartMarker, @SolverDefinition, @StartPosition + 1);
+    SET @SecondEndPosition = CHARINDEX(@EndMarker, @SolverDefinition, @EndPosition + 1);
 
-SET @Replacement = N'        -- Shared explicit deduction engine
+    IF @StartPosition = 0
+       OR @EndPosition = 0
+       OR @StartPosition >= @EndPosition
+       OR @SecondStartPosition <> 0
+       OR @SecondEndPosition <> 0
+    BEGIN
+        THROW 50525,
+              'The explicit-technique solver block could not be identified uniquely.',
+              1;
+    END;
+
+    SET @Replacement = N'        -- Shared explicit deduction engine
         -----------------------------------------------------------------------
         DECLARE @SharedCandidateState dbo.SudokuCandidateState;
         DECLARE @SharedDeduction TABLE
@@ -358,14 +365,15 @@ SET @Replacement = N'        -- Shared explicit deduction engine
         -----------------------------------------------------------------------
 ';
 
-SET @SolverDefinition =
-    STUFF
-    (
-        @SolverDefinition,
-        @StartPosition,
-        @EndPosition - @StartPosition,
-        @Replacement
-    );
+    SET @SolverDefinition =
+        STUFF
+        (
+            @SolverDefinition,
+            @StartPosition,
+            @EndPosition - @StartPosition,
+            @Replacement
+        );
+END;
 
 IF CHARINDEX(N'USP_SudokuFindFirstDeduction', @SolverDefinition) = 0
    OR CHARINDEX(N'        -- Naked Single', @SolverDefinition) <> 0
@@ -374,6 +382,20 @@ BEGIN
           'The solver was not rewritten to use the shared deduction engine.',
           1;
 END;
+
+SET @ParameterStart = CHARINDEX(N'(', @SolverDefinition);
+
+IF @ParameterStart = 0
+BEGIN
+    THROW 50529,
+          'The solver parameter-list marker was not found during shared-engine integration.',
+          1;
+END;
+
+SET @SolverDefinition =
+    N'ALTER PROCEDURE dbo.USP_SudokuSolve' +
+    CHAR(13) + CHAR(10) +
+    SUBSTRING(@SolverDefinition, @ParameterStart, LEN(@SolverDefinition));
 
 EXEC sys.sp_executesql @SolverDefinition;
 GO
